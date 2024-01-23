@@ -12,9 +12,8 @@ MAX_TENSOR_NUM    = 64
 MAX_CMD_GROUP_NUM = 64
 MAX_STAGE_NUM     = 64
 
-#so_path = ctypes.CDLL('/usr/local/untool/lib/libuntpu.so')
-so_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'libuntpu.so'))
-lib     = ctypes.CDLL(so_path)
+lib = ctypes.CDLL('/usr/local/untool/lib/libuntpu.so')
+
 int_point = ctypes.POINTER(ctypes.c_int)
 int_      = ctypes.c_int
 ulonglong = ctypes.c_ulonglong
@@ -203,16 +202,15 @@ class ModelInfoSC(ctypes.Structure):
 
 lib.find_optimal.restype  = ctypes.POINTER(UntensorS)
 lib.find_optimal.argtypes = [ctypes.POINTER(UntensorS)]
-def find_optimal(tensor) -> ctypes.POINTER(UntensorS):
+def find_optimal(tensor):
     """
     untensor find_optimal(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
     """
     return lib.find_optimal(ctypes.byref(tensor))
 
-lib.copy_tensor.restype  = None
 lib.copy_tensor.argtypes = [ctypes.POINTER(UntensorS), ctypes.POINTER(UntensorS)]
-def copy_tensor(src, dst) -> None:
+def copy_tensor(src, dst):
     """
     void copy_tensor (untensor src, untensor dst);
     :param src: 	ctypes.POINTER(UntensorS)
@@ -220,9 +218,8 @@ def copy_tensor(src, dst) -> None:
     """
     return lib.copy_tensor(ctypes.byref(src), ctypes.byref(dst))
 
-lib.copy_tensor_to_device.restype  = None
 lib.copy_tensor_to_device.argtypes = [ctypes.POINTER(UntensorS), ctypes.c_bool]
-def copy_tensor_to_device(tensor, force) -> None:
+def copy_tensor_to_device(tensor, force):
     """
     void copy_tensor_to_device(untensor tensor, bool force);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -230,9 +227,8 @@ def copy_tensor_to_device(tensor, force) -> None:
     """
     return lib.copy_tensor_to_device(ctypes.byref(tensor), force)
 
-lib.set_data.restype  = None
 lib.set_data.argtypes = [ctypes.POINTER(UntensorS), ctypes.c_void_p, ctypes.c_size_t, ctypes.c_bool]
-def set_data(tensor, data, size, is_copy) -> None:
+def set_data(tensor, data, size, is_copy):
     """
     void set_data(untensor tensor, void* data, size_t size, bool is_copy);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -242,9 +238,8 @@ def set_data(tensor, data, size, is_copy) -> None:
     """
     return lib.set_data(ctypes.byref(tensor), data, ctypes.c_size_t(size), is_copy)
 
-lib.copy_tensor_to_host.restype  = None
 lib.copy_tensor_to_host.argtypes = [ctypes.POINTER(UntensorS), ctypes.c_bool]
-def copy_tensor_to_host(tensor, force) -> None:
+def copy_tensor_to_host(tensor, force):
     """
     void copy_tensor_to_host(untensor tensor, bool force);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -252,9 +247,8 @@ def copy_tensor_to_host(tensor, force) -> None:
     """
     return lib.copy_tensor_to_host(ctypes.byref(tensor), force)
 
-lib.show_device_data.restype  = None
 lib.show_device_data.argtypes = [ctypes.POINTER(UntensorS), ctypes.c_int, ctypes.c_int]
-def show_device_data(tensor, start, len) -> None:
+def show_device_data(tensor, start, len):
     """
     void show_device_data(untensor tensor, int start, int len);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -265,7 +259,7 @@ def show_device_data(tensor, start, len) -> None:
 
 lib.tensor_shape_is_same.restype  = ctypes.c_bool
 lib.tensor_shape_is_same.argtypes = [ctypes.POINTER(UntensorS), ctypes.POINTER(UntensorS)]
-def tensor_shape_is_same(tensor1, tensor2) -> ctypes.c_bool:
+def tensor_shape_is_same(tensor1, tensor2):
     """
     bool tensor_shape_is_same(untensor tensor1, untensor tensor2);
     :param tensor1: 	ctypes.POINTER(UntensorS)
@@ -275,7 +269,7 @@ def tensor_shape_is_same(tensor1, tensor2) -> ctypes.c_bool:
 
 lib.create_tensor.restype  = ctypes.POINTER(UntensorS)
 lib.create_tensor.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_uint64), ctypes.c_int, ctypes.c_bool, ctypes.c_int]
-def create_tensor(dims, shape, dtype, is_malloc, device_id) -> ctypes.POINTER(UntensorS):
+def create_tensor(dims, shape, dtype, is_malloc, device_id):
     """
     untensor create_tensor(int dims, uint64_t * shape, int dtype, bool is_malloc, int device_id);
     :param dims: 	ctypes.c_int
@@ -286,9 +280,8 @@ def create_tensor(dims, shape, dtype, is_malloc, device_id) -> ctypes.POINTER(Un
     """
     return lib.create_tensor(ctypes.c_int(dims), make2_c_uint64_list(shape), ctypes.c_int(dtype), is_malloc, ctypes.c_int(device_id))
 
-lib.free_data.restype  = None
 lib.free_data.argtypes = [ctypes.POINTER(UntensorS)]
-def free_data(tensor) -> None:
+def free_data(tensor):
     """
     void free_data(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -297,25 +290,23 @@ def free_data(tensor) -> None:
 
 lib.get_tensor_device_address.restype  = ctypes.c_uint64
 lib.get_tensor_device_address.argtypes = [ctypes.POINTER(UntensorS)]
-def get_tensor_device_address(tensor) -> ctypes.c_uint64:
+def get_tensor_device_address(tensor):
     """
     u64 get_tensor_device_address(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
     """
     return lib.get_tensor_device_address(ctypes.byref(tensor))
 
-lib.malloc_host_data.restype  = None
 lib.malloc_host_data.argtypes = [ctypes.POINTER(UntensorS)]
-def malloc_host_data(tensor) -> None:
+def malloc_host_data(tensor):
     """
     void malloc_host_data(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
     """
     return lib.malloc_host_data(ctypes.byref(tensor))
 
-lib.show_device_mem_data.restype  = None
 lib.show_device_mem_data.argtypes = [ctypes.c_int, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-def show_device_mem_data(device_id, address, size, source_dtype, start, len) -> None:
+def show_device_mem_data(device_id, address, size, source_dtype, start, len):
     """
     void show_device_mem_data(int device_id, u64 address, size_t size, int source_dtype, int start, int len);
     :param device_id: 	ctypes.c_int
@@ -327,42 +318,28 @@ def show_device_mem_data(device_id, address, size, source_dtype, start, len) -> 
     """
     return lib.show_device_mem_data(ctypes.c_int(device_id), ctypes.c_uint64(address), ctypes.c_size_t(size), ctypes.c_int(source_dtype), ctypes.c_int(start), ctypes.c_int(len))
 
-lib.malloc_device.restype  = None
 lib.malloc_device.argtypes = [ctypes.POINTER(UntensorS)]
-def malloc_device(tensor) -> None:
+def malloc_device(tensor):
     """
     void malloc_device(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
     """
     return lib.malloc_device(ctypes.byref(tensor))
 
-lib.copy_data_from_tensor_with_flag.restype  = None
-lib.copy_data_from_tensor_with_flag.argtypes = [ctypes.POINTER(UntensorS), ctypes.POINTER(UntensorS), ctypes.c_int]
-def copy_data_from_tensor_with_flag(src, dst, flag) -> None:
-    """
-    void copy_data_from_tensor_with_flag(untensor src, untensor dst, int flag);
-    :param src: 	ctypes.POINTER(UntensorS)
-    :param dst: 	ctypes.POINTER(UntensorS)
-    :param flag: 	ctypes.c_int
-    """
-    return lib.copy_data_from_tensor_with_flag(ctypes.byref(src), ctypes.byref(dst), ctypes.c_int(flag))
-
 
 lib.load_bmodel.restype  = ctypes.c_void_p
-lib.load_bmodel.argtypes = [ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_int]
-def load_bmodel(bmodel_path, pre_malloc, default_io_mem, device_id) -> ctypes.c_void_p:
+lib.load_bmodel.argtypes = [ctypes.c_char_p, ctypes.c_bool, ctypes.c_int]
+def load_bmodel(bmodel_path, pre_malloc, device_id):
     """
-    struct un_runtime_s * load_bmodel(const char* bmodel_path, bool pre_malloc, bool default_io_mem, int device_id);
+    struct un_runtime_s * load_bmodel(const char* bmodel_path, bool pre_malloc, int device_id);
     :param bmodel_path: 	ctypes.c_char_p
     :param pre_malloc: 	ctypes.c_bool
-    :param default_io_mem: 	ctypes.c_bool
     :param device_id: 	ctypes.c_int
     """
-    return lib.load_bmodel(str2char_point(bmodel_path), pre_malloc, default_io_mem, ctypes.c_int(device_id))
+    return lib.load_bmodel(str2char_point(bmodel_path), pre_malloc, ctypes.c_int(device_id))
 
-lib.set_input_tensor.restype  = None
 lib.set_input_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(UntensorS)]
-def set_input_tensor(runtime, index, tensor) -> None:
+def set_input_tensor(runtime, index, tensor):
     """
     void set_input_tensor (struct un_runtime_s * runtime, int index, untensor tensor);
     :param runtime: 	ctypes.c_void_p
@@ -371,9 +348,8 @@ def set_input_tensor(runtime, index, tensor) -> None:
     """
     return lib.set_input_tensor(runtime, ctypes.c_int(index), ctypes.byref(tensor))
 
-lib.set_output_tensor.restype  = None
 lib.set_output_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(UntensorS)]
-def set_output_tensor(runtime, index, tensor) -> None:
+def set_output_tensor(runtime, index, tensor):
     """
     void set_output_tensor(struct un_runtime_s * runtime, int index, untensor tensor);
     :param runtime: 	ctypes.c_void_p
@@ -383,9 +359,8 @@ def set_output_tensor(runtime, index, tensor) -> None:
     return lib.set_output_tensor(runtime, ctypes.c_int(index), ctypes.byref(tensor))
 
 
-lib.init_io_tensor.restype  = None
 lib.init_io_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def init_io_tensor(runtime, stage_dix) -> None:
+def init_io_tensor(runtime, stage_dix):
     """
     void init_io_tensor (struct un_runtime_s * runtime, int stage_dix);
     :param runtime: 	ctypes.c_void_p
@@ -394,9 +369,8 @@ def init_io_tensor(runtime, stage_dix) -> None:
     return lib.init_io_tensor(runtime, ctypes.c_int(stage_dix))
 
 
-lib.fill_io_tensor.restype  = None
 lib.fill_io_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def fill_io_tensor(runtime, stage_idx) -> None:
+def fill_io_tensor(runtime, stage_idx):
     """
     void fill_io_tensor (struct un_runtime_s * runtime, int stage_idx);
     :param runtime: 	ctypes.c_void_p
@@ -405,28 +379,17 @@ def fill_io_tensor(runtime, stage_idx) -> None:
     return lib.fill_io_tensor(runtime, ctypes.c_int(stage_idx))
 
 
-lib.fill_maxio.restype  = None
-lib.fill_maxio.argtypes = [ctypes.c_void_p]
-def fill_maxio(runtime) -> None:
-    """
-    void fill_maxio(struct un_runtime_s * runtime);
-    :param runtime: 	ctypes.c_void_p
-    """
-    return lib.fill_maxio(runtime)
-
-
 lib.check_all_data.restype  = ctypes.c_bool
 lib.check_all_data.argtypes = [ctypes.c_void_p]
-def check_all_data(runtime) -> ctypes.c_bool:
+def check_all_data(runtime):
     """
     bool check_all_data(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
     """
     return lib.check_all_data(runtime)
 
-lib.copy_input_to_device.restype  = None
 lib.copy_input_to_device.argtypes = [ctypes.c_void_p, ctypes.c_bool]
-def copy_input_to_device(runtime, force) -> None:
+def copy_input_to_device(runtime, force):
     """
     void copy_input_to_device(struct un_runtime_s * runtime, bool force);
     :param runtime: 	ctypes.c_void_p
@@ -434,9 +397,8 @@ def copy_input_to_device(runtime, force) -> None:
     """
     return lib.copy_input_to_device(runtime, force)
 
-lib.copy_output_to_host.restype  = None
 lib.copy_output_to_host.argtypes = [ctypes.c_void_p, ctypes.c_bool]
-def copy_output_to_host(runtime, force) -> None:
+def copy_output_to_host(runtime, force):
     """
     void copy_output_to_host(struct un_runtime_s * runtime, bool force);
     :param runtime: 	ctypes.c_void_p
@@ -444,9 +406,8 @@ def copy_output_to_host(runtime, force) -> None:
     """
     return lib.copy_output_to_host(runtime, force)
 
-lib.check_move_to_device_fill_api.restype  = None
 lib.check_move_to_device_fill_api.argtypes = [ctypes.c_void_p, ctypes.c_bool]
-def check_move_to_device_fill_api(runtime, default_move_coeff) -> None:
+def check_move_to_device_fill_api(runtime, default_move_coeff):
     """
     void check_move_to_device_fill_api(struct un_runtime_s * runtime, bool default_move_coeff);
     :param runtime: 	ctypes.c_void_p
@@ -454,9 +415,8 @@ def check_move_to_device_fill_api(runtime, default_move_coeff) -> None:
     """
     return lib.check_move_to_device_fill_api(runtime, default_move_coeff)
 
-lib.run.restype  = None
 lib.run.argtypes = [ctypes.c_void_p]
-def run(runtime) -> None:
+def run(runtime):
     """
     void run(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
@@ -465,7 +425,7 @@ def run(runtime) -> None:
 
 lib.stage_match_io.restype  = ctypes.c_bool
 lib.stage_match_io.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def stage_match_io(runtime, stage_index) -> ctypes.c_bool:
+def stage_match_io(runtime, stage_index):
     """
     bool stage_match_io(struct un_runtime_s * runtime, int stage_index);
     :param runtime: 	ctypes.c_void_p
@@ -473,116 +433,25 @@ def stage_match_io(runtime, stage_index) -> ctypes.c_bool:
     """
     return lib.stage_match_io(runtime, ctypes.c_int(stage_index))
 
-lib.free_runtime.restype  = None
 lib.free_runtime.argtypes = [ctypes.c_void_p]
-def free_runtime(runtime) -> None:
+def free_runtime(runtime):
     """
     void free_runtime(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
     """
     return lib.free_runtime(runtime)
 
-lib.delete_runtime.restype  = None
 lib.delete_runtime.argtypes = [ctypes.c_void_p]
-def delete_runtime(runtime) -> None:
+def delete_runtime(runtime):
     """
     void delete_runtime(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
     """
     return lib.delete_runtime(runtime)
 
-lib.load_bmodel_sg.restype  = ctypes.c_void_p
-lib.load_bmodel_sg.argtypes = [ctypes.c_char_p, ctypes.c_bool, ctypes.c_bool, ctypes.c_int]
-def load_bmodel_sg(bmodel_path, pre_malloc, default_io_mem, device_id) -> ctypes.c_void_p:
-    """
-    un_runtime_sg_s* load_bmodel_sg(const char* bmodel_path, bool pre_malloc, bool default_io_mem, int device_id);
-    :param bmodel_path: 	ctypes.c_char_p
-    :param pre_malloc: 	ctypes.c_bool
-    :param default_io_mem: 	ctypes.c_bool
-    :param device_id: 	ctypes.c_int
-    """
-    return lib.load_bmodel_sg(str2char_point(bmodel_path), pre_malloc, default_io_mem, ctypes.c_int(device_id))
 
-lib.run_sg.restype  = None
-lib.run_sg.argtypes = [ctypes.c_void_p]
-def run_sg(runtime) -> None:
-    """
-    void run_sg(struct un_runtime_sg_s * runtime);
-    :param runtime: 	ctypes.c_void_p
-    """
-    return lib.run_sg(runtime)
-
-lib.fill_maxio_sg.restype  = None
-lib.fill_maxio_sg.argtypes = [ctypes.c_void_p]
-def fill_maxio_sg(runtime) -> None:
-    """
-    void fill_maxio_sg(struct un_runtime_sg_s * runtime);
-    :param runtime: 	ctypes.c_void_p
-    """
-    return lib.fill_maxio_sg(runtime)
-
-lib.set_stage_sg.restype  = None
-lib.set_stage_sg.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def set_stage_sg(runtime, stage_idx) -> None:
-    """
-    void set_stage_sg(struct un_runtime_sg_s * runtime, int stage_idx);
-    :param runtime: 	ctypes.c_void_p
-    :param stage_idx: 	ctypes.c_int
-    """
-    return lib.set_stage_sg(runtime, ctypes.c_int(stage_idx))
-
-lib.free_runtime_sg.restype  = None
-lib.free_runtime_sg.argtypes = [ctypes.c_void_p]
-def free_runtime_sg(runtime) -> None:
-    """
-    void free_runtime_sg(struct un_runtime_sg_s * runtime);
-    :param runtime: 	ctypes.c_void_p
-    """
-    return lib.free_runtime_sg(runtime)
-
-lib.init_tensor_sg.restype  = None
-lib.init_tensor_sg.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def init_tensor_sg(runtime, stage_idx) -> None:
-    """
-    void init_tensor_sg(struct un_runtime_sg_s * runtime, int stage_idx);
-    :param runtime: 	ctypes.c_void_p
-    :param stage_idx: 	ctypes.c_int
-    """
-    return lib.init_tensor_sg(runtime, ctypes.c_int(stage_idx))
-
-lib.get_model_sg_info.restype  = ctypes.c_void_p
-lib.get_model_sg_info.argtypes = [ctypes.c_void_p]
-def get_model_sg_info(runtime) -> ctypes.c_void_p:
-    """
-    model_info_sg* get_model_sg_info(struct un_runtime_sg_s * runtime);
-    :param runtime: 	ctypes.c_void_p
-    """
-    return lib.get_model_sg_info(runtime)
-
-lib.get_input_tensor_sg.restype  = ctypes.POINTER(UntensorS)
-lib.get_input_tensor_sg.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def get_input_tensor_sg(runtime, index) -> ctypes.POINTER(UntensorS):
-    """
-    untensor get_input_tensor_sg(struct un_runtime_sg_s * runtime, int index);
-    :param runtime: 	ctypes.c_void_p
-    :param index: 	ctypes.c_int
-    """
-    return lib.get_input_tensor_sg(runtime, ctypes.c_int(index))
-
-lib.get_output_tensor_sg.restype  = ctypes.POINTER(UntensorS)
-lib.get_output_tensor_sg.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def get_output_tensor_sg(runtime, index) -> ctypes.POINTER(UntensorS):
-    """
-    untensor get_output_tensor_sg(struct un_runtime_sg_s * runtime, int index);
-    :param runtime: 	ctypes.c_void_p
-    :param index: 	ctypes.c_int
-    """
-    return lib.get_output_tensor_sg(runtime, ctypes.c_int(index))
-
-
-lib.replace_model_weight.restype  = None
 lib.replace_model_weight.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
-def replace_model_weight(runtime, new_coeff_data, size, stage_index) -> None:
+def replace_model_weight(runtime, new_coeff_data, size, stage_index):
     """
     void replace_model_weight(struct un_runtime_s * runtime, void* new_coeff_data, size_t size, int stage_index);
     :param runtime: 	ctypes.c_void_p
@@ -594,7 +463,7 @@ def replace_model_weight(runtime, new_coeff_data, size, stage_index) -> None:
 
 lib.get_model_info.restype  = ctypes.c_void_p
 lib.get_model_info.argtypes = [ctypes.c_void_p]
-def get_model_info(runtime) -> ctypes.c_void_p:
+def get_model_info(runtime):
     """
     struct model_info_s * get_model_info(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
@@ -603,7 +472,7 @@ def get_model_info(runtime) -> ctypes.c_void_p:
 
 lib.get_input_tensor.restype  = ctypes.POINTER(UntensorS)
 lib.get_input_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def get_input_tensor(runtime, index) -> ctypes.POINTER(UntensorS):
+def get_input_tensor(runtime, index):
     """
     untensor get_input_tensor(struct un_runtime_s * runtime, int index);
     :param runtime: 	ctypes.c_void_p
@@ -613,7 +482,7 @@ def get_input_tensor(runtime, index) -> ctypes.POINTER(UntensorS):
 
 lib.get_output_tensor.restype  = ctypes.POINTER(UntensorS)
 lib.get_output_tensor.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def get_output_tensor(runtime, index) -> ctypes.POINTER(UntensorS):
+def get_output_tensor(runtime, index):
     """
     untensor get_output_tensor(struct un_runtime_s * runtime, int index);
     :param runtime: 	ctypes.c_void_p
@@ -621,9 +490,8 @@ def get_output_tensor(runtime, index) -> ctypes.POINTER(UntensorS):
     """
     return lib.get_output_tensor(runtime, ctypes.c_int(index))
 
-lib.set_stage.restype  = None
 lib.set_stage.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def set_stage(runtime, stage_idx) -> None:
+def set_stage(runtime, stage_idx):
     """
     void set_stage(struct un_runtime_s * runtime, int stage_idx);
     :param runtime: 	ctypes.c_void_p
@@ -631,9 +499,8 @@ def set_stage(runtime, stage_idx) -> None:
     """
     return lib.set_stage(runtime, ctypes.c_int(stage_idx))
 
-lib.free_handle.restype  = None
 lib.free_handle.argtypes = [ctypes.c_void_p]
-def free_handle(bm_handle) -> None:
+def free_handle(bm_handle):
     """
     void free_handle(bm_handle_t bm_handle)
     :param bm_handle: 	ctypes.c_void_p
@@ -642,7 +509,7 @@ def free_handle(bm_handle) -> None:
 
 lib.get_device_status.restype  = ctypes.c_int
 lib.get_device_status.argtypes = [ctypes.c_int]
-def get_device_status(device_id) -> ctypes.c_int:
+def get_device_status(device_id):
     """
     int get_device_status(int device_id)
     :param device_id: 	ctypes.c_int
@@ -651,7 +518,7 @@ def get_device_status(device_id) -> ctypes.c_int:
 
 lib.get_handle.restype  = ctypes.c_void_p
 lib.get_handle.argtypes = [ctypes.c_int]
-def get_handle(device_id) -> ctypes.c_void_p:
+def get_handle(device_id):
     """
     bm_handle_t get_handle(int device_id)
     :param device_id: 	ctypes.c_int
@@ -660,25 +527,23 @@ def get_handle(device_id) -> ctypes.c_void_p:
 
 lib.read_bmodel_ctx.restype  = ctypes.c_void_p
 lib.read_bmodel_ctx.argtypes = [ctypes.c_char_p]
-def read_bmodel_ctx(filename) -> ctypes.c_void_p:
+def read_bmodel_ctx(filename):
     """
     ModelCtx* read_bmodel_ctx(const char* filename);
     :param filename: 	ctypes.c_char_p
     """
     return lib.read_bmodel_ctx(str2char_point(filename))
 
-lib.free_bmodel_ctx.restype  = None
 lib.free_bmodel_ctx.argtypes = [ctypes.c_void_p]
-def free_bmodel_ctx(model_ctx) -> None:
+def free_bmodel_ctx(model_ctx):
     """
     void free_bmodel_ctx(ModelCtx * model_ctx);
     :param model_ctx: 	ctypes.c_void_p
     """
     return lib.free_bmodel_ctx(model_ctx)
 
-lib.read_binary_by_address.restype  = None
 lib.read_binary_by_address.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_void_p]
-def read_binary_by_address(model_ctx, address, size, data) -> None:
+def read_binary_by_address(model_ctx, address, size, data):
     """
     void read_binary_by_address(ModelCtx * model_ctx, uint64_t address, size_t size, void* data);
     :param model_ctx: 	ctypes.c_void_p
@@ -690,7 +555,7 @@ def read_binary_by_address(model_ctx, address, size, data) -> None:
 
 lib.read_coeff_binary_address.restype  = ctypes.c_uint64
 lib.read_coeff_binary_address.argtypes = [ctypes.c_void_p]
-def read_coeff_binary_address(model_ctx) -> ctypes.c_uint64:
+def read_coeff_binary_address(model_ctx):
     """
     uint64_t read_coeff_binary_address(ModelCtx * model_ctx);
     :param model_ctx: 	ctypes.c_void_p
@@ -699,7 +564,7 @@ def read_coeff_binary_address(model_ctx) -> ctypes.c_uint64:
 
 lib.get_all_coeff.restype  = ctypes.c_void_p
 lib.get_all_coeff.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-def get_all_coeff(model_ctx, stage_id) -> ctypes.c_void_p:
+def get_all_coeff(model_ctx, stage_id):
     """
     void * get_all_coeff(ModelCtx * model_ctx, size_t stage_id);
     :param model_ctx: 	ctypes.c_void_p
@@ -707,9 +572,8 @@ def get_all_coeff(model_ctx, stage_id) -> ctypes.c_void_p:
     """
     return lib.get_all_coeff(model_ctx, ctypes.c_size_t(stage_id))
 
-lib.read_binary_by_address_with_mem.restype  = None
 lib.read_binary_by_address_with_mem.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_void_p]
-def read_binary_by_address_with_mem(data, address, size, data2) -> None:
+def read_binary_by_address_with_mem(data, address, size, data2):
     """
     void read_binary_by_address_with_mem(void* data, uint64_t address, size_t size, void* data2);
     :param data: 	ctypes.c_void_p
@@ -719,9 +583,8 @@ def read_binary_by_address_with_mem(data, address, size, data2) -> None:
     """
     return lib.read_binary_by_address_with_mem(data, ctypes.c_uint64(address), ctypes.c_size_t(size), data2)
 
-lib.write_binary_by_address_with_mem.restype  = None
 lib.write_binary_by_address_with_mem.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_size_t, ctypes.c_void_p]
-def write_binary_by_address_with_mem(dest_data, address, size, src_data) -> None:
+def write_binary_by_address_with_mem(dest_data, address, size, src_data):
     """
     void write_binary_by_address_with_mem(void* dest_data, uint64_t address, size_t size, void* src_data);
     :param dest_data: 	ctypes.c_void_p
@@ -731,9 +594,8 @@ def write_binary_by_address_with_mem(dest_data, address, size, src_data) -> None
     """
     return lib.write_binary_by_address_with_mem(dest_data, ctypes.c_uint64(address), ctypes.c_size_t(size), src_data)
 
-lib.convert_model_info_into_c.restype  = None
 lib.convert_model_info_into_c.argtypes = [ctypes.c_void_p, ctypes.POINTER(ModelInfoSC)]
-def convert_model_info_into_c(model_info, model_info_c) -> None:
+def convert_model_info_into_c(model_info, model_info_c):
     """
     void convert_model_info_into_c(struct model_info_s* model_info, struct model_info_s_c * model_info_c);
     :param model_info: 	ctypes.c_void_p
@@ -741,19 +603,8 @@ def convert_model_info_into_c(model_info, model_info_c) -> None:
     """
     return lib.convert_model_info_into_c(model_info, ctypes.byref(model_info_c))
 
-lib.convert_sg_model_info_into_c.restype  = None
-lib.convert_sg_model_info_into_c.argtypes = [ctypes.c_void_p, ctypes.POINTER(ModelInfoSC)]
-def convert_sg_model_info_into_c(model_info, model_info_c) -> None:
-    """
-    void convert_sg_model_info_into_c(model_info_sg* model_info, struct model_info_s_c * model_info_c);
-    :param model_info: 	ctypes.c_void_p
-    :param model_info_c: 	ctypes.POINTER(ModelInfoSC)
-    """
-    return lib.convert_sg_model_info_into_c(model_info, ctypes.byref(model_info_c))
-
-lib.free_tensor.restype  = None
 lib.free_tensor.argtypes = [ctypes.POINTER(UntensorS)]
-def free_tensor(tensor) -> None:
+def free_tensor(tensor):
     """
     void free_tensor(untensor tensor);
     :param tensor: 	ctypes.POINTER(UntensorS)
@@ -762,16 +613,15 @@ def free_tensor(tensor) -> None:
 
 lib.get_model_info.restype  = ctypes.c_void_p
 lib.get_model_info.argtypes = [ctypes.c_void_p]
-def get_model_info(runtime) -> ctypes.c_void_p:
+def get_model_info(runtime):
     """
     struct model_info_s * get_model_info(struct un_runtime_s * runtime);
     :param runtime: 	ctypes.c_void_p
     """
     return lib.get_model_info(runtime)
 
-lib.print_data_by_fp32.restype  = None
 lib.print_data_by_fp32.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
-def print_data_by_fp32(data, size, dtype, start, len) -> None:
+def print_data_by_fp32(data, size, dtype, start, len):
     """
     void print_data_by_fp32(void* data, int size, int dtype, int start, int len);
     :param data: 	ctypes.c_void_p
@@ -782,9 +632,8 @@ def print_data_by_fp32(data, size, dtype, start, len) -> None:
     """
     return lib.print_data_by_fp32(data, ctypes.c_int(size), ctypes.c_int(dtype), ctypes.c_int(start), ctypes.c_int(len))
 
-lib.data_convert_to_fp32.restype  = None
 lib.data_convert_to_fp32.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_size_t]
-def data_convert_to_fp32(src, target, dtype, size) -> None:
+def data_convert_to_fp32(src, target, dtype, size):
     """
     void data_convert_to_fp32(void* src, void* target, int dtype, size_t size);
     :param src: 	ctypes.c_void_p
@@ -796,195 +645,10 @@ def data_convert_to_fp32(src, target, dtype, size) -> None:
 
 lib.convert_to_fp32.restype  = ctypes.c_float
 lib.convert_to_fp32.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def convert_to_fp32(source, dtype) -> ctypes.c_float:
+def convert_to_fp32(source, dtype):
     """
     float convert_to_fp32(void* source, int dtype);
     :param source: 	ctypes.c_void_p
     :param dtype: 	ctypes.c_int
     """
     return lib.convert_to_fp32(source, ctypes.c_int(dtype))
-
-
-lib.premalloc_input_output_addr.restype  = None
-lib.premalloc_input_output_addr.argtypes = [ctypes.c_void_p]
-def premalloc_input_output_addr(model_info_p) -> None:
-    """
-    void premalloc_input_output_addr(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.premalloc_input_output_addr(model_info_p)
-
-lib.set_model_info_user_map.restype  = None
-lib.set_model_info_user_map.argtypes = [ctypes.c_void_p]
-def set_model_info_user_map(model_info_p) -> None:
-    """
-    void set_model_info_user_map(struct model_info_s * model_info_p);// 设置 input output addr
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.set_model_info_user_map(model_info_p)
-
-lib.set_max_input_output.restype  = None
-lib.set_max_input_output.argtypes = [ctypes.c_void_p]
-def set_max_input_output(model_info_p) -> None:
-    """
-    void set_max_input_output(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.set_max_input_output(model_info_p)
-
-
-lib.move_to_device.restype  = None
-lib.move_to_device.argtypes = [ctypes.c_void_p, ctypes.c_bool]
-def move_to_device(model_info_p, default_move_coeff) -> None:
-    """
-    void move_to_device(struct model_info_s * model_info_p, bool default_move_coeff);
-    :param model_info_p: 	ctypes.c_void_p
-    :param default_move_coeff: 	ctypes.c_bool
-    """
-    return lib.move_to_device(model_info_p, default_move_coeff)
-
-lib.convert_bdc_cmd.restype  = None
-lib.convert_bdc_cmd.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_bool]
-def convert_bdc_cmd(model_info_p, cmd, is_last) -> None:
-    """
-    void convert_bdc_cmd(struct model_info_s * model_info_p, u32* cmd, bool is_last);// 转换 bdc cmd
-    :param model_info_p: 	ctypes.c_void_p
-    :param cmd: 	ctypes.POINTER(ctypes.c_uint32)
-    :param is_last: 	ctypes.c_bool
-    """
-    return lib.convert_bdc_cmd(model_info_p, cmd, is_last)
-
-lib.get_bdc_cmd_len.restype  = ctypes.c_uint32
-lib.get_bdc_cmd_len.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool]
-def get_bdc_cmd_len(model_ctx, binary_cmd, start_offset, last_cmd) -> ctypes.c_uint32:
-    """
-    uint32_t get_bdc_cmd_len(ModelCtx* model_ctx, const Binary* binary_cmd, u64 start_offset, bool last_cmd);
-    :param model_ctx: 	ctypes.c_void_p
-    :param binary_cmd: 	ctypes.c_void_p
-    :param start_offset: 	ctypes.c_uint64
-    :param last_cmd: 	ctypes.c_bool
-    """
-    return lib.get_bdc_cmd_len(model_ctx, binary_cmd, ctypes.c_uint64(start_offset), last_cmd)
-
-lib.get_gdma_cmd_len.restype  = ctypes.c_uint32
-lib.get_gdma_cmd_len.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool]
-def get_gdma_cmd_len(model_ctx, binary_cmd, start_offset, last_cmd) -> ctypes.c_uint32:
-    """
-    uint32_t get_gdma_cmd_len(ModelCtx* model_ctx, const Binary* binary_cmd, u64 start_offset, bool last_cmd);
-    :param model_ctx: 	ctypes.c_void_p
-    :param binary_cmd: 	ctypes.c_void_p
-    :param start_offset: 	ctypes.c_uint64
-    :param last_cmd: 	ctypes.c_bool
-    """
-    return lib.get_gdma_cmd_len(model_ctx, binary_cmd, ctypes.c_uint64(start_offset), last_cmd)
-
-lib.convert_gdma_cmd.restype  = None
-lib.convert_gdma_cmd.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_bool, ctypes.c_size_t]
-def convert_gdma_cmd(model_info_p, cmd, is_last, stage_idx) -> None:
-    """
-    void convert_gdma_cmd(struct model_info_s * model_info_p, u32* cmd, bool is_last, size_t stage_idx);
-    :param model_info_p: 	ctypes.c_void_p
-    :param cmd: 	ctypes.POINTER(ctypes.c_uint32)
-    :param is_last: 	ctypes.c_bool
-    :param stage_idx: 	ctypes.c_size_t
-    """
-    return lib.convert_gdma_cmd(model_info_p, cmd, is_last, ctypes.c_size_t(stage_idx))
-
-lib.bdc_gdma_move_to_device.restype  = None
-lib.bdc_gdma_move_to_device.argtypes = [ctypes.c_void_p]
-def bdc_gdma_move_to_device(model_info_p) -> None:
-    """
-    void bdc_gdma_move_to_device(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.bdc_gdma_move_to_device(model_info_p)
-
-lib.stage_bdc_gdma_move_to_device.restype  = None
-lib.stage_bdc_gdma_move_to_device.argtypes = [ctypes.c_void_p, ctypes.c_int]
-def stage_bdc_gdma_move_to_device(model_info_p, stage_idx) -> None:
-    """
-    void stage_bdc_gdma_move_to_device(struct model_info_s * model_info_p, int stage_idx);
-    :param model_info_p: 	ctypes.c_void_p
-    :param stage_idx: 	ctypes.c_int
-    """
-    return lib.stage_bdc_gdma_move_to_device(model_info_p, ctypes.c_int(stage_idx))
-
-
-lib.malloc_coeff_neuron_on_device_set_offset.restype  = None
-lib.malloc_coeff_neuron_on_device_set_offset.argtypes = [ctypes.c_void_p]
-def malloc_coeff_neuron_on_device_set_offset(model_info_p) -> None:
-    """
-    void malloc_coeff_neuron_on_device_set_offset(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.malloc_coeff_neuron_on_device_set_offset(model_info_p)
-
-lib.set_coeff_neuron_map.restype  = None
-lib.set_coeff_neuron_map.argtypes = [ctypes.c_void_p]
-def set_coeff_neuron_map(model_info_p) -> None:
-    """
-    void set_coeff_neuron_map(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.set_coeff_neuron_map(model_info_p)
-
-lib.coeff_to_device.restype  = None
-lib.coeff_to_device.argtypes = [ctypes.c_void_p]
-def coeff_to_device(model_info_p) -> None:
-    """
-    void coeff_to_device(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.coeff_to_device(model_info_p)
-
-
-lib.load_kernel_module.restype  = None
-lib.load_kernel_module.argtypes = [ctypes.c_void_p]
-def load_kernel_module(model_info_p) -> None:
-    """
-    void load_kernel_module(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.load_kernel_module(model_info_p)
-
-
-lib.bm1684x_fill_api_info.restype  = None
-lib.bm1684x_fill_api_info.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int]
-def bm1684x_fill_api_info(model_info_p, api_info_p, stage_idx) -> None:
-    """
-    void bm1684x_fill_api_info(struct model_info_s * model_info_p, struct api_info_t * api_info_p, int stage_idx);
-    :param model_info_p: 	ctypes.c_void_p
-    :param api_info_p: 	ctypes.c_void_p
-    :param stage_idx: 	ctypes.c_int
-    """
-    return lib.bm1684x_fill_api_info(model_info_p, api_info_p, ctypes.c_int(stage_idx))
-
-lib.fill_api_info.restype  = None
-lib.fill_api_info.argtypes = [ctypes.c_void_p]
-def fill_api_info(model_info_p) -> None:
-    """
-    void fill_api_info(struct model_info_s * model_info_p);
-    :param model_info_p: 	ctypes.c_void_p
-    """
-    return lib.fill_api_info(model_info_p)
-
-lib.run_model.restype  = None
-lib.run_model.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-def run_model(model_info_p, stage_idx) -> None:
-    """
-    void run_model(struct model_info_s * model_info_p, size_t stage_idx);
-    :param model_info_p: 	ctypes.c_void_p
-    :param stage_idx: 	ctypes.c_size_t
-    """
-    return lib.run_model(model_info_p, ctypes.c_size_t(stage_idx))
-
-lib.free_model.restype  = None
-lib.free_model.argtypes = [ctypes.c_void_p, ctypes.c_bool]
-def free_model(model_info_p, free_input_output) -> None:
-    """
-    void free_model(struct model_info_s * model_info_p, bool free_input_output);
-    :param model_info_p: 	ctypes.c_void_p
-    :param free_input_output: 	ctypes.c_bool
-    """
-    return lib.free_model(model_info_p, free_input_output)
-version='2023-12-21-14-32-11'

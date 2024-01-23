@@ -8,6 +8,7 @@ from .prompt_parser import parse_prompt_attention
 from .scheduler import create_random_tensors, sample
 from PIL import Image, ImageFilter, ImageOps
 import PIL
+from .npuengine import EngineOV
 import time
 from . import masking
 from .utils import PromptChunk, resize_image, flatten, apply_overlay, WrapOutput
@@ -17,7 +18,6 @@ import math
 from . import ultimate
 import random
 import os
-from .newtool import UntoolEngineOV
 
 
 opt_C = 4
@@ -58,28 +58,30 @@ class StableDiffusionPipeline:
         self.scheduler = scheduler
         self.basemodel_name = basic_model
         st_time = time.time()
-        self.text_encoder = UntoolEngineOV("./models/basic/{}/babes_te_f32.bmodel".format( # encoder_1684x_f32.bmodel
-            basic_model), device_id=self.device_id, pre_malloc=True, output_list=[0], sg=False)
+        self.text_encoder = EngineOV("./models/basic/{}/encoder_1684x_f32.bmodel".format(
+            basic_model), device_id=self.device_id)
         print("====================== Load TE in ", time.time()-st_time)
         
         st_time = time.time()
-        # unet_multize.bmodel
-        self.unet_pure = UntoolEngineOV("./models/basic/{}/unet_1_1684x_f16_attention.bmodel".format(
-            basic_model, extra), device_id=self.device_id, pre_malloc=True, output_list=[0], sg=False)
-        self.unet_pure.default_input()
+        self.unet_pure = EngineOV("./models/basic/{}/unet_multize.bmodel".format(
+            basic_model, extra), device_id=self.device_id)
         print("====================== Load UNET in ", time.time()-st_time)
         
         self.unet_lora = None
+        if os.path.exists("./models/basic/{}/unet_multize_lora.bmodel"):
+            st_time = time.time()
+            self.unet_lora = EngineOV("./models/basic/{}/unet_multize_lora.bmodel".format(
+                basic_model, extra), device_id=self.device_id)
+            print("====================== Load UNET-lora in ", time.time()-st_time)
         
         st_time = time.time()
-        # self.vae_decoder = UntoolEngineOV("./models/basic/{}/{}vae_decoder_f16_512.bmodel".format(#vae_decoder_multize.bmodel".format(
-        self.vae_decoder = UntoolEngineOV("./models/basic/{}/{}vae_decoder_multize.bmodel".format(
-            basic_model, extra), device_id=self.device_id, pre_malloc=True, output_list=[0], sg=False)
+        self.vae_decoder = EngineOV("./models/basic/{}/{}vae_decoder_multize.bmodel".format(
+            basic_model, extra), device_id=self.device_id)
         print("====================== Load VAE DE in ", time.time()-st_time)
         
         st_time = time.time()
-        self.vae_encoder = UntoolEngineOV("./models/basic/{}/{}vae_encoder_multize.bmodel".format(
-            basic_model, extra), device_id=self.device_id, pre_malloc=True, output_list=[0], sg=False)
+        self.vae_encoder = EngineOV("./models/basic/{}/{}vae_encoder_multize.bmodel".format(
+            basic_model, extra), device_id=self.device_id)
         print("====================== Load VAE EN in ", time.time()-st_time)
         
         if controlnet_name:
@@ -695,7 +697,7 @@ class StableDiffusionPipeline:
             controlnet_weight=1.0,
             use_controlnet=True,
             init_latents=None,
-            enable_prompt_weight=False,
+            enable_prompt_weight=True,
             scheduler=None,
             generator=None
     ):  
@@ -730,10 +732,9 @@ class StableDiffusionPipeline:
                 max_length=self.tokenizer.model_max_length,
                 truncation=True
             ).input_ids  # 换tokenizer后 此处一致
-            # import pdb; pdb.set_trace()
             # text_embedding use npu engine to inference
             text_embeddings = self.text_encoder(
-                {"tokens": np.array([tokens]).astype(np.int32)})[0]
+                {"tokens": np.array([tokens]).astype(np.int32)})[0] # 一致
             
             # do classifier free guidance
             if guidance_scale > 1.0 or negative_prompt is not None:
@@ -775,14 +776,14 @@ class StableDiffusionPipeline:
         
         # handle latents
         shape = self.latent_shape
-        # 这里是torch manual seed = seeds[0]
         rand_latents = create_random_tensors(shape, seeds, subseeds=subseeds, subseed_strength=subseed_strength,
                                         seed_resize_from_h=seed_resize_from_h, seed_resize_from_w=seed_resize_from_w)
+        
         if init_image is not None and mask is not None:
             mask = self._preprocess_mask(mask)
         else:
             mask = None
-        if scheduler!="LCM" and not self.is_v2 or (self.is_v2 and scheduler in ['Euler', None]):
+        if scheduler!="LCM"  and not self.is_v2 or (self.is_v2 and scheduler in ['Euler', None]):
             # run scheduler
             if scheduler is not None:
                 self.scheduler = scheduler
@@ -819,11 +820,9 @@ class StableDiffusionPipeline:
                 t_start = max(num_inference_steps - init_timestep, 0)
                 timesteps = scheduler.timesteps[t_start * scheduler.order :]
                 return timesteps, num_inference_steps - t_start
-            # import pdb;pdb.set_trace()
+
             self.scheduler.set_timesteps(num_inference_steps)
-            print("scheduler.timesteps: ", self.scheduler.timesteps)
             timesteps, num_inference_steps = get_timesteps(self.scheduler, num_inference_steps, strength)
-            # print(timesteps)
             latent_timestep = timesteps[:1]
 
             # Prepare latent variables
@@ -838,55 +837,24 @@ class StableDiffusionPipeline:
             
             # Denoising loop
             # self.scheduler.set_timesteps(num_inference_steps)
-            # self.scheduler.timesteps[-2] = 399
-            # self.scheduler.timesteps[-1] = 109
             timesteps = self.scheduler.timesteps
             do_classifier_free_guidance = guidance_scale > 1.0
             # num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
             extra_step_kwargs = {}
-            start_time = time.time()
-            
-            print(timesteps)
-            print(start_time)
             for i, t in tqdm(enumerate(timesteps)):
                 # expand the latents if we are doing classifier free guidance
-                latent_model_input = torch.cat([latents]*2) if do_classifier_free_guidance else latents
+                latent_model_input = torch.cat([latents] * 2) if do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
+                controlnet_res = self.generate_zero_controlnet_data()
+                down_block_additional_residuals = controlnet_res[:-1]
+                mid_block_additional_residual = controlnet_res[-1]
                 latent_model_input = latent_model_input.numpy()
                 timestamp = np.array([t])
-                if i == 0:
-                    default_input_map = {
-                        0:{
-                            "data": latent_model_input,
-                            "flag": 0
-                        },
-                        1:{
-                            "data": timestamp,
-                            "flag": 0
-                        },
-                        2: {
-                            "data": text_embeddings[-1], # prompt embedding, no negative
-                            "flag": 0
-                        }
-                    }
-                else:
-                    default_input_map = {
-                        0:{
-                            "data": latent_model_input,
-                            "flag": 0
-                        },
-                        1:{
-                            "data": timestamp,
-                            "flag": 0
-                        }
-                    }
-                #noise_pred = self.unet([latent_model_input,timestamp,text_embeddings,mid_block_additional_residual,*down_block_additional_residuals])[0]
+                noise_pred = self.unet([latent_model_input,timestamp,text_embeddings,mid_block_additional_residual,*down_block_additional_residuals])[0]
                 # perform guidance
-                noise_pred = self.unet.run_with_np(default_input_map)[0]
                 if do_classifier_free_guidance:
                     noise_pred_uncond, noise_pred_text = np.split(noise_pred, 2)
                     noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
-
                 # compute the previous noisy sample x_t -> x_t-1
                 noise_pred = torch.from_numpy(noise_pred)
                 latents = self.scheduler.step(noise_pred, 
@@ -894,11 +862,9 @@ class StableDiffusionPipeline:
                                               **extra_step_kwargs, 
                                               return_dict=False, 
                                               generator=generator)[0]
-            end_time = time.time()
-            print("time cost: ", end_time - start_time)
             latents = latents.numpy()
         
-        latents = latents / 0.18215 
+        latents = 1 / 0.18215 * latents
         image = self.vae_decoder({"input.1": latents.astype(np.float32)})[0]
         image = (image / 2 + 0.5).clip(0, 1)
         image = (image[0].transpose(1, 2, 0)* 255).astype(np.uint8)  # RGB

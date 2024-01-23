@@ -911,7 +911,7 @@ def setup_img2img_steps(steps,denoising_strength):
 
 
 
-def sample(steps, x,
+def sample(steps, x, 
            scheduler_name=None, 
            guidance_scale=7, 
            controlnet_weight=1.0 , 

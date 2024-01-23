@@ -7,10 +7,8 @@ from tqdm import tqdm
 
 mylog = logging.getLogger(__name__)
 MLIR_START   = 4294967296
-# print better 
-np.set_printoptions(precision=6, suppress=True)
-def cpu(self, force=True, record=True):
-    self.npy
+
+def cpu(self, force=True):
     copy_tensor_to_host(self, force)
 
 def malloc_device_addr(self):
@@ -18,7 +16,7 @@ def malloc_device_addr(self):
         self.get_bm_handle()
     malloc_device(self)
 
-def npu(self, force=True, record=True):
+def npu(self, force=True):
     copy_tensor_to_device(self, force)
 
 def malloc_host_addr(self):
@@ -40,19 +38,6 @@ def npy(self):
             shape = list(self.shape)[:self.dims]
             data_type = type_map[self.dtype]
             self.npy__ = make_c2np(self.data, shape, data_type)
-            self.is_from_np = True
-        else:
-            if self.size == 0:
-                size = self.max_size // np.dtype(type_map[self.dtype]).itemsize
-                self.npy__ = np.zeros(size, dtype=type_map[self.dtype])
-                self.is_from_np = True
-                self.data  = make_np2c(self.npy__)
-            else:
-                shape = list(self.shape)[:self.dims]
-                data_type = type_map[self.dtype]
-                self.npy__ = np.zeros(shape, dtype=data_type)
-                self.data  = make_np2c(self.npy__)
-                self.is_from_np = True
         return self.npy__
     else:
         return self.npy__
@@ -128,47 +113,16 @@ def set_numpy(self, npy, do_necessary=True):
             assert self.shape[i] == npy.shape[i]
     self.data       = make_np2c(npy)
 
-def set_dtype_shape(self, dtype, shape, regen_npy=True):
+def set_dtype_shape(self, dtype, shape):
     self.dtype = dtype
     self.dims  = len(shape)
     for i in range(self.dims):
         self.shape[i] = shape[i]
     self.size = np.prod(shape) * np.dtype(type_map[dtype]).itemsize
-    if self.is_from_np and regen_npy is True:
-        self.npy__ = np.zeros(shape, dtype=type_map[dtype])
-        self.data  = make_np2c(self.npy__)
 
-def find_father(self) -> UntensorS:
-    if self.is_copy:
-        cur_tensor = ctypes.cast(self.copy_tensor, ctypes.POINTER(UntensorS)).contents
-        return cur_tensor.find_father()
-    else:
-        return self
-
-def set_copy_tensor(self, copy_tensor:UntensorS):
+def set_copy_tensor(self, copy_tensor):
     self.is_copy     = True
-    self.copy_tensor = ctypes.addressof(copy_tensor)
-
-def diff_set_with_flag(self, npdata, flag=0, do_necessary=True):
-    # 0: force copy, 1: simple check copy , 2: force not copy 
-    tensor = self.find_father()
-    if npdata.dtype != type_map[self.dtype] and do_necessary:
-        npdata = npdata.astype(type_map[self.dtype])
-    if flag == 0:
-        tensor.data  = make_np2c(npdata)
-        tensor.npy__ = npdata
-        tensor.is_from_np = True
-        tensor.size       = npdata.size * npdata.dtype.itemsize
-        tensor.npu()
-    else:
-        ValueError("not support")
-
-def copy_tensor_data(self, tensor:UntensorS, flag=0):
-    tensor = tensor.find_father()
-    if flag == 0:
-        copy_data_from_tensor_with_flag(self, tensor, 0)
-    else:
-        ValueError("not support")
+    self.copy_tensor = copy_tensor
 
 def __del__(self):
     pass
@@ -185,9 +139,6 @@ UntensorS.cur_status         = cur_status
 UntensorS.set_copy_tensor    = set_copy_tensor
 UntensorS.set_numpy          = set_numpy
 UntensorS.set_dtype_shape    = set_dtype_shape
-UntensorS.diff_set_with_flag = diff_set_with_flag
-UntensorS.copy_tensor_data   = copy_tensor_data
-UntensorS.find_father        = find_father
 UntensorS.__del__            = __del__
 
 def convert_tensor_c_into_dict(tensor_c):
@@ -435,17 +386,13 @@ class LoRAPlugin:
         for layer in tqdm(all_keys):
             if layer in self.match_dict:
                 weight = updates[layer+".weight"]
-                alpha  = 1/updates[layer+".alpha"]
+                alpha  = updates[layer+".alpha"]
                 self.lora_weight_save_unet_opt(layer, weight, alpha, alpha2, ready_reorder)
 
-class UntoolEngineOV:
-    def __init__(self, model_path="", device_id=0, pre_malloc=True, default_io_mem=False, output_list=None, sg=False) :
+class EngineOV:
+    def __init__(self, model_path="", device_id=0, pre_malloc=True) :
         self.model_path = model_path
-        self.sg         = sg
-        if self.sg:
-            self.runtime = load_bmodel_sg(model_path, pre_malloc,default_io_mem, device_id)
-        else:
-            self.runtime = load_bmodel(model_path, pre_malloc,default_io_mem, device_id)
+        self.runtime = load_bmodel(model_path, pre_malloc, device_id)
         self.basic_info = self.model_info
         self.input_num  = self.basic_info['input_num']
         self.output_num = self.basic_info['output_num']
@@ -453,85 +400,17 @@ class UntoolEngineOV:
         self.outputs = self.output_num * [None]
         self.cur_stage = -1
         self.init_io()
-        if pre_malloc and not self.sg:
+        if pre_malloc:
             self.check_and_move_to_device()
-        self.build_input_stage_map()
-        self.build_output_stage_map()
-        self.output_list = output_list
         
     def __str__(self):
         return self.model_path
-    
-    def fill_io_max(self):
-        if not self.sg:
-            fill_maxio(self.runtime)
-        else:
-            fill_maxio_sg(self.runtime)
-        self.init_io()
-    
-    def build_input_stage_map(self):
-        input_stage_map = {}
-        stage_num       = self.basic_info['stage_num']
-        for input_idx in range(self.input_num):
-            input_stage_map[input_idx] = {}
-        for stage_idx in range(stage_num):
-            for input_idx in range(self.input_num):
-                shape = tuple(self.basic_info['stage_info'][stage_idx]['input_tensor'][input_idx]['data_shape']) 
-                input_stage_map[input_idx][shape] = stage_idx
-        self.input_stage_map = input_stage_map
-    
-    def build_output_stage_map(self):
-        output_stage_map = {}
-        stage_num = self.basic_info['stage_num']
-        for output_idx in range(self.output_num):
-            output_stage_map[output_idx] = {}
-        for stage_idx in range(stage_num):
-            for output_idx in range(self.output_num):
-                shape = tuple(self.basic_info['stage_info'][stage_idx]['output_tensor'][output_idx]['data_shape']) 
-                output_stage_map[output_idx][stage_idx] = shape
-        self.output_stage_map = output_stage_map
-        return self
-    
-    def default_input(self, default_input_map: dict={}, default_output_map: dict={}):
-        # default_input_map: 0/1: a single value
-        # if user want to set npy, please set manually
-        for idx, each_input in enumerate(self.inputs):
-            if each_input.is_copy:
-                continue
-            size               = each_input.max_size // np.dtype(type_map[each_input.dtype]).itemsize
-            each_input.npy__   = np.zeros(size, dtype=type_map[each_input.dtype])
-            each_input.is_from_np = True
-            each_input.size    = each_input.max_size
-            if idx in default_input_map:
-                value = default_input_map[idx]
-                each_input.npy__ += value
-            each_input.data    = make_np2c(each_input.npy__)
-            each_input.npu()
         
-        for idx, each_output in enumerate(self.outputs):
-            if each_output.is_copy:
-                continue
-            each_output.size = each_output.max_size // np.dtype(type_map[each_output.dtype]).itemsize
-            each_output.npy__ = np.zeros(each_output.size, dtype=type_map[each_output.dtype])
-            each_output.is_from_np = True
-            if idx in default_output_map:
-                value = default_output_map[idx]
-                each_output.npy__ += value
-            each_output.data = make_np2c(each_output.npy__)
-            each_output.npu()
-        return self
-    
     def init_io(self):
         for i in range(self.input_num):
-            if not self.sg:
-                self.inputs[i]  = get_input_tensor(self.runtime, i).contents
-            else:
-                self.inputs[i]  = get_input_tensor_sg(self.runtime, i).contents
+            self.inputs[i]  = get_input_tensor(self.runtime, i).contents
         for i in range(self.output_num):
-            if not self.sg:
-                self.outputs[i] = get_output_tensor(self.runtime, i).contents
-            else:
-                self.outputs[i] = get_output_tensor_sg(self.runtime, i).contents
+            self.outputs[i] = get_output_tensor(self.runtime, i).contents
     
     def init_output_with_np(self):
         assert self.cur_stage >= 0
@@ -557,7 +436,6 @@ class UntoolEngineOV:
         
     def check_and_move_to_device(self):
         check_move_to_device_fill_api(self.runtime, True)
-        return self
     
     def check_and_set_stage(self, shape_lists):
         cur_info  = self.model_info
@@ -579,7 +457,7 @@ class UntoolEngineOV:
                 break
         if self.cur_stage == -1:
             raise ValueError("can't find stage")
-        self.set_stage(self.cur_stage)
+        set_stage(self.runtime, self.cur_stage)
         # set input and output shape 
         for i in range(self.input_num):
             self.inputs[i].set_dtype_shape(stage[self.cur_stage]['input_tensor'][i]['data_type'], stage[self.cur_stage]['input_tensor'][i]['data_shape'])
@@ -615,30 +493,26 @@ class UntoolEngineOV:
     @property
     def model_info(self):
         model_info_c = ModelInfoSC()
-        if not self.sg:
-            convert_model_info_into_c(get_model_info(self.runtime), model_info_c)
-        else:
-            convert_sg_model_info_into_c(get_model_sg_info(self.runtime), model_info_c)
+        convert_model_info_into_c(get_model_info(self.runtime), model_info_c)
         res = convert_model_info_c_into_dict(model_info_c)
         return res
     
-    def run_copy(self, args,stage_diff_idx=0, output_list:list=[]):
-        if output_list is None:
-            output_list = []
-        if self.output_list is not None and len(output_list) == 0:
-            output_list = self.output_list
-
+    def run_copy(self, args, return_np_list=True, force=True, copy_force=False):
+        # args must be list or dicts
         value = []
         if isinstance(args, list):
             value = args
         elif isinstance(args, dict):
             value = list(args.values())
-        self.get_stage_by_shape(value[stage_diff_idx].shape, stage_diff_idx)
-        input_map = {}
-        for idx in range(self.input_num):
-            input_map[idx] = {"data":value[idx], "flag":0}
-        res = self.run_with_np(input_map, output_list)
-        return res
+        self.set_input_with_np(value)
+        self.move_input_into_device(force, copy_force)
+        run(self.runtime)
+        self.move_output_into_host(force)
+        if return_np_list:
+            res = []
+            for i in self.outputs:
+                res.append(i.npy)
+            return res
     
     def fake_stage_run(self, stage_idx=0):
         stage = self.basic_info['stage_info'][stage_idx]
@@ -647,7 +521,14 @@ class UntoolEngineOV:
             temp = stage['input_tensor'][i]
             temp_np = np.zeros(temp['data_shape']).astype(type_map[temp['data_type']])
             value.append(temp_np)
-        res = self.run_copy(value, stage_diff_idx=0)
+        # print(value)
+        self.set_input_with_np(value)
+        self.move_input_into_device()
+        run(self.runtime)
+        self.move_output_into_host()
+        res = []
+        for i in self.outputs:
+            res.append(i.npy)
         return res
     
     def replace_coeff(self, coeff, coeff_size, stage_idx=0):
@@ -657,78 +538,8 @@ class UntoolEngineOV:
         
         pass
     
-    def set_stage(self, stage):
-        if self.sg:
-            set_stage_sg(self.runtime, stage)
-        else:
-            set_stage(self.runtime, stage)
-        self.cur_stage = stage
-    
-    def get_stage_by_shape(self, shape, idx):
-        if isinstance(shape, list):
-            shape = tuple(shape)
-        if shape not in self.input_stage_map[idx]:
-            ValueError("can't find stage")
-        stage = self.input_stage_map[idx][shape]
-        self.set_stage(stage)
-        return self
-    
-    def run_with_np(self, input_map_dict:dict={}, output_list:list=[], check_stage=True, stage_diff_idx=0, stage=-1) -> list:
-        # input_map_dict: {idx: { "data":np, "flag":0 } }
-        # output_map_dict: 
-        # 这个函数假设所有的输入都已经在device上了
-        # 0: force copy, 1: simple check copy , 2: force not copy 
-        # get stage 
-        if output_list is None:
-            output_list = []
-        if self.output_list is not None and len(output_list) == 0:
-            output_list = self.output_list
-        
-        if not check_stage and stage >= 0:
-            self.set_stage(stage)
-        
-        for k,v in input_map_dict.items():
-            input_tensor = self.inputs[k]
-            input_tensor.diff_set_with_flag(v['data'], v['flag'], True)
-            if check_stage and k == stage_diff_idx:
-                self.get_stage_by_shape(v['data'].shape, k)
-        if not self.sg:
-            run(self.runtime)
-        else:
-            run_sg(self.runtime)
-        res = []
-        for idx in output_list:
-            self.outputs[idx].set_dtype_shape(self.basic_info['stage_info'][self.cur_stage]['output_tensor'][idx]['data_type'], self.basic_info['stage_info'][self.cur_stage]['output_tensor'][idx]['data_shape'])
-            self.outputs[idx].cpu()
-            res.append(self.outputs[idx].npy)
-        return res
-    
-    def __call__(self, 
-                 args=None,
-                 stage_diff_idx=0,
-                 input_map_dict_tensor:dict=None,
-                 input_map_dict_np:dict=None,
-                 output_list:list=None,
-                 check_stage:bool=True):
-        if args is not None:
-            return self.run_copy(args, stage_diff_idx=stage_diff_idx)
-        if input_map_dict_np is not None:
-            return self.run_with_np(input_map_dict_np, output_list=output_list, check_stage=check_stage, stage_diff_idx=stage_diff_idx)
-        if input_map_dict_tensor is not None:
-            return self.run_with_tensor(input_map_dict_tensor, output_list=output_list, check_stage=check_stage, stage_diff_idx=stage_diff_idx)
-        return None
-
-    def run_with_tensor(self, input_map_dict_tensor:dict={}, output_list:list=[], check_stage=True, stage_diff_idx=0):
-        if output_list is None:
-            output_list = []
-        if self.output_list is not None and len(output_list) == 0:
-            output_list = self.output_list
-        
-        for k,v in input_map_dict_tensor.items():
-            input_tensor = self.inputs[k]
-            # check address is same and same pass
-            # check address is not same and copy d2d
-        pass
+    def __call__(self, args, return_np_list=True, force=True, copy_force=False):
+        return self.run_copy(args, return_np_list, force, copy_force)
 
     # def __del__(self):
     #     self.active_free()
@@ -741,26 +552,20 @@ class UntoolEngineOV:
         self.outputs = None
         self.basic_info = None
 
-def link_bmodel(modelsrc: UntoolEngineOV, modeldst: UntoolEngineOV, link_map:dict):
-    """link two models with map (map is (i/o, idx) : (i/o, idx) )
-    Args:
-        modelsrc (EngineOV): source model
-        modeldst (EngineOV): dest model
-        link_map (dict): map is (i/o, idx) : (i/o, idx) i=0,o=1
-    """
-    for key, value in link_map.items():
-        src_is_input = key[0] == 0
-        src_idx  = key[1]
-        dst_is_input = value[0] == 0
-        dst_idx  = value[1]
-        if src_is_input:
-            if dst_is_input:
-                modeldst.inputs[dst_idx].set_copy_tensor(modelsrc.inputs[src_idx])
-            else:
-                modeldst.outputs[dst_idx].set_copy_tensor(modelsrc.inputs[src_idx])
-        else:
-            if dst_is_input:
-                modeldst.inputs[dst_idx].set_copy_tensor(modelsrc.outputs[src_idx])
-            else:
-                modeldst.outputs[dst_idx].set_copy_tensor(modelsrc.outputs[src_idx])
 
+if __name__=="__main__":
+    # for large unet (sdxl) will be error when double batch
+    # 观察到某一些模型推理会失败 
+    # model_path = "/workspace/aa/allmodel/basic/sd152parallel/tae1_5.bmodel"
+    # model = EngineOV(model_path, 11, True)
+    # print(model.model_info)
+    # res   = model.fake_stage_run(0)
+    # del model
+    bmodel_path = "/workspace/autocompiler/autotrace/pt_models/v1-5-pruned-test/unet_2_1684x_f16.bmodel" 
+    npz_file    = "/workspace/demos/tpukern/test/mw/coeffex/lcm_lora_reorder.npz"
+    match_file  = "/workspace/demos/tpukern/test/mw/coeffex/unet_match.csv"
+    model       = EngineOV(bmodel_path, 11, True)
+    model.load_lora_file(npz_file, match_file, 1, 0)
+
+    res = model.fake_stage_run(0)
+    # import pdb;pdb.set_trace()
